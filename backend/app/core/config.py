@@ -1,4 +1,5 @@
-﻿from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings
+import os
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Sistema_Facturacion"
@@ -13,8 +14,17 @@ class Settings(BaseSettings):
     POSTGRES_PORT: str = "5432"
     POSTGRES_DB: str = "facturacion_db"
 
+    # Optional override: set DATABASE_URL env var (recommended for local testing)
+    DATABASE_URL_ENV: str | None = None
+
     @property
     def DATABASE_URL(self):
+        # Priority: explicit DATABASE_URL env var -> DATABASE_URL_ENV -> constructed Postgres URL
+        env_url = os.getenv("DATABASE_URL")
+        if env_url:
+            return env_url
+        if self.DATABASE_URL_ENV:
+            return self.DATABASE_URL_ENV
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
 settings = Settings()
