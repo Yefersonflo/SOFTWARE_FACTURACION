@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Typography, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material'
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, Typography, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
@@ -30,7 +30,7 @@ export default function Reports() {
       <Box display="flex" gap={2} mb={2}>
         <FormControl>
           <InputLabel id="per-label">Período</InputLabel>
-          <Select labelId="per-label" value={period} label="Período" onChange={(e: SelectChangeEvent) => setPeriod(e.target.value)}>
+          <Select labelId="per-label" value={period} label="Período" onChange={(e) => setPeriod(e.target.value as string)}>
             <MenuItem value="daily">Diario</MenuItem>
             <MenuItem value="weekly">Semanal</MenuItem>
             <MenuItem value="monthly">Mensual</MenuItem>
@@ -40,7 +40,7 @@ export default function Reports() {
 
         <FormControl>
           <InputLabel id="type-label">Tipo</InputLabel>
-          <Select labelId="type-label" value={reportType} label="Tipo" onChange={(e: SelectChangeEvent) => setReportType(e.target.value)}>
+          <Select labelId="type-label" value={reportType} label="Tipo" onChange={(e) => setReportType(e.target.value as string)}>
             <MenuItem value="sales">Ventas</MenuItem>
             <MenuItem value="expenses">Gastos</MenuItem>
             <MenuItem value="mixed">Mixto</MenuItem>
