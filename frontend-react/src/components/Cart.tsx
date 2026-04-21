@@ -41,25 +41,40 @@ export default function Cart() {
     const win = window.open('', '_blank', 'width=420,height=800')
     if (!win) return
     const logoUrl = window.location.origin + '/logo.png'
+    const RECEIPT_WIDTH = '80mm' // default width; can switch to '58mm' if needed
+
     const styles = `
       <style>
-        body{ font-family: 'Courier New', monospace; font-size:12px; color:#111 }
-        .receipt{ width: 320px; margin: 0 auto; padding:8px }
+        body{ font-family: 'Courier New', monospace; font-size:12px; color:#111; margin:0 }
+        .receipt{ width: ${RECEIPT_WIDTH}; max-width:320px; margin: 0 auto; padding:8px }
         .center{ text-align:center }
         .items{ width:100%; border-top:1px dashed #000; border-bottom:1px dashed #000; margin-top:8px; margin-bottom:8px }
-        .row{ display:flex; justify-content:space-between; margin:4px 0 }
+        .row{ display:flex; justify-content:space-between; margin:4px 0; word-break:break-word }
         .muted{ color:#666; font-size:11px }
         .total{ display:flex; justify-content:space-between; font-weight:bold; font-size:14px; margin-top:8px }
-        @media print { @page { margin: 0; size: 80mm auto } body { -webkit-print-color-adjust: exact } }
+        .small{ font-size:10px }
+        img.logo{ max-width:160px; height:auto }
+        @media print {
+          @page { margin: 0; size: ${RECEIPT_WIDTH} auto }
+          body { -webkit-print-color-adjust: exact }
+          .receipt { padding:6px }
+        }
       </style>
     `
+
+    const fiscalInfo = `
+      <div class="muted small">NIT: 123456789-0</div>
+      <div class="muted small">Resolución: --- (placeholder)</div>
+    `
+
     const html = `
       <html><head><title>Factura ${saleId}</title>${styles}</head>
       <body>
         <div class="receipt">
           <div class="center">
-            <img src="${logoUrl}" alt="Logo" style="max-width:160px;margin-bottom:6px" />
+            <img src="${logoUrl}" alt="Logo" class="logo" style="margin-bottom:6px" />
             <div class="muted">SUPERMERCADO EJEMPLO</div>
+            ${fiscalInfo}
             <div class="muted">Dirección ejemplo</div>
             <div class="muted">Tel: 000-000-000</div>
             <hr />
