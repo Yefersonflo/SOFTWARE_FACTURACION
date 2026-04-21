@@ -38,16 +38,19 @@ export default function Cart() {
   }
 
   const openReceiptWindow = (saleId: number | string, itemsList: any[], totalAmount: number) => {
-    const win = window.open('', '_blank', 'width=400,height=800')
+    const win = window.open('', '_blank', 'width=420,height=800')
     if (!win) return
+    const logoUrl = window.location.origin + '/logo.png'
     const styles = `
       <style>
-        body{ font-family: monospace; font-size:12px; }
-        .receipt{ width: 320px; margin: 0 auto; }
+        body{ font-family: 'Courier New', monospace; font-size:12px; color:#111 }
+        .receipt{ width: 320px; margin: 0 auto; padding:8px }
         .center{ text-align:center }
-        .items{ width:100%; border-top:1px dashed #000; border-bottom:1px dashed #000 }
-        .row{ display:flex; justify-content:space-between }
-        @media print { @page { margin: 0; size: 80mm auto } }
+        .items{ width:100%; border-top:1px dashed #000; border-bottom:1px dashed #000; margin-top:8px; margin-bottom:8px }
+        .row{ display:flex; justify-content:space-between; margin:4px 0 }
+        .muted{ color:#666; font-size:11px }
+        .total{ display:flex; justify-content:space-between; font-weight:bold; font-size:14px; margin-top:8px }
+        @media print { @page { margin: 0; size: 80mm auto } body { -webkit-print-color-adjust: exact } }
       </style>
     `
     const html = `
@@ -55,18 +58,19 @@ export default function Cart() {
       <body>
         <div class="receipt">
           <div class="center">
-            <h3>SUPERMERCADO</h3>
-            <div>Dirección ejemplo</div>
-            <div>Tel: 000-000-000</div>
+            <img src="${logoUrl}" alt="Logo" style="max-width:160px;margin-bottom:6px" />
+            <div class="muted">SUPERMERCADO EJEMPLO</div>
+            <div class="muted">Dirección ejemplo</div>
+            <div class="muted">Tel: 000-000-000</div>
             <hr />
           </div>
-          <div>Factura ID: ${saleId}</div>
-          <div>Fecha: ${new Date().toLocaleString()}</div>
+          <div class="muted">Factura ID: ${saleId}</div>
+          <div class="muted">Fecha: ${new Date().toLocaleString()}</div>
           <div class="items">
             ${itemsList.map(i => `<div class="row"><div>${i.name} x${i.quantity}</div><div>$${(i.price*i.quantity).toFixed(2)}</div></div>`).join('')}
           </div>
-          <div class="row"><strong>Total</strong><strong>$${totalAmount.toFixed(2)}</strong></div>
-          <div class="center"><p>Gracias por su compra</p></div>
+          <div class="total"><div>Total</div><div>$${totalAmount.toFixed(2)}</div></div>
+          <div class="center"><p style="margin-top:10px">¡Gracias por su compra!</p></div>
         </div>
       </body></html>
     `
