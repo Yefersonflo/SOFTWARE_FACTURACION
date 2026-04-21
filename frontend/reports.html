@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reportes Estadísticos - Supermercado</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="auth.js"></script>
+</head>
+<body>
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div class="row g-3 flex-grow-1">
+            <div class="col-md-3">
+                <label class="form-label" id="date-filter-label">Fecha base</label>
+                <input type="date" id="date-filter" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Periodo</label>
+                <select id="period-filter" class="form-select" onchange="updatePeriodInput()">
+                    <option value="daily">Diario</option>
+                    <option value="weekly">Semanal</option>
+                    <option value="monthly">Mensual</option>
+                    <option value="quarterly">Trimestral</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                <select id="type-filter" class="form-select">
+                    <option value="sales">Ventas</option>
+                    <option value="expenses">Gastos</option>
+                    <option value="mixed" selected>Mixto</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Histórico</label>
+                <select id="limit-filter" class="form-select">
+                    <option value="7">Últimos 7 cortes</option>
+                    <option value="15">Últimos 15 cortes</option>
+                    <option value="30" selected>Últimos 30 cortes</option>
+                    <option value="60">Últimos 60 cortes</option>
+                </select>
+            </div>
+        </div>
+        <button onclick="loadReports()" class="btn btn-primary">Aplicar filtros</button>
+    </div>
+
+    <div class="alert alert-info mb-4" id="selected-period-box">
+        Corte seleccionado: <strong id="selected-period-label">-</strong>
+    </div>
+
+    <div id="alert-box" class="alert alert-danger d-none" role="alert"></div>
+
+    <div class="row g-4">
+        <div class="col-md-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-2">Ventas acumuladas</p>
+                    <h3 id="total-sales">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-2">Ingresos acumulados</p>
+                    <h3 id="total-income">$ 0.00</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-2">Gastos acumulados</p>
+                    <h3 id="total-expenses">$ 0.00</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-2">Balance neto</p>
+                    <h3 id="net-total">$ 0.00</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card border-0">
+                <div class="card-body">
+                    <h5 class="card-title">Evolución del período</h5>
+                    <canvas id="summary-chart" height="140"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card border-0">
+                <div class="card-body">
+                    <h5 class="card-title">Composición del reporte</h5>
+                    <canvas id="composition-chart" height="140"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card border-0">
+                <div class="card-body">
+                    <h5 class="card-title">Histórico guardado</h5>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Corte</th>
+                                    <th>Ventas</th>
+                                    <th>Ingresos</th>
+                                    <th>Gastos</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        initAppShell({
+            activePage: "reports.html",
+            title: "Reportes",
+            subtitle: "Consulta histórico diario, semanal o mensual de ventas y gastos.",
+            requiredRole: "admin",
+        });
+
+        let summaryChart = null;
+        let compositionChart = null;
+        const monthNames = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+        function showError(message) {
+            const alertBox = document.getElementById("alert-box");
+            alertBox.textContent = message;
+            alertBox.classList.remove("d-none");
+        }
+
+        function clearError() {
+            document.getElementById("alert-box").classList.add("d-none");
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat("es-CO", {
+                style: "currency",
+                currency: "COP",
+                minimumFractionDigits: 2,
+            }).format(Number(value || 0));
+        }
+
+        function renderCards(totals) {
+            document.getElementById("total-sales").textContent = totals.sales_count || 0;
+            document.getElementById("total-income").textContent = formatCurrency(totals.income_total);
+            document.getElementById("total-expenses").textContent = formatCurrency(totals.expense_total);
+            document.getElementById("net-total").textContent = formatCurrency(totals.net_total);
+        }
+
+        function setTodayDate() {
+            const today = new Date();
+            const month = String(today.getMonth() + 1).padStart(2, "0");
+            const day = String(today.getDate()).padStart(2, "0");
+            document.getElementById("date-filter").value = `${today.getFullYear()}-${month}-${day}`;
+        }
+
+        function getWeekValue(date) {
+            const target = new Date(date);
+            const dayNumber = (target.getDay() + 6) % 7;
+            target.setDate(target.getDate() - dayNumber + 3);
+            const firstThursday = new Date(target.getFullYear(), 0, 4);
+            const firstDayNumber = (firstThursday.getDay() + 6) % 7;
+            firstThursday.setDate(firstThursday.getDate() - firstDayNumber + 3);
+            const weekNumber = 1 + Math.round((target - firstThursday) / 604800000);
+            return `${target.getFullYear()}-W${String(weekNumber).padStart(2, "0")}`;
+        }
+
+        function getDateFromWeekValue(weekValue) {
+            const [yearPart, weekPart] = weekValue.split("-W");
+            const year = Number(yearPart);
+            const week = Number(weekPart);
+            const januaryFourth = new Date(year, 0, 4);
+            const dayNumber = (januaryFourth.getDay() + 6) % 7;
+            const monday = new Date(januaryFourth);
+            monday.setDate(januaryFourth.getDate() - dayNumber + (week - 1) * 7);
+            return monday;
+        }
+
+        function getMonthValue(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        }
+
+        function formatDateInput(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+        }
+
+        function updatePeriodInput() {
+            const period = document.getElementById("period-filter").value;
+            const input = document.getElementById("date-filter");
+            const label = document.getElementById("date-filter-label");
+            const currentDate = new Date();
+
+            if (period === "daily") {
+                input.type = "date";
+                label.textContent = "Día";
+                if (!input.value || input.type !== "date") input.value = formatDateInput(currentDate);
+                return;
+            }
+
+            if (period === "weekly") {
+                input.type = "week";
+                label.textContent = "Semana";
+                input.value = getWeekValue(currentDate);
+                return;
+            }
+
+            if (period === "monthly") {
+                input.type = "month";
+                label.textContent = "Mes";
+                input.value = getMonthValue(currentDate);
+                return;
+            }
+
+            input.type = "month";
+            label.textContent = "Trimestre";
+            input.value = getMonthValue(currentDate);
+        }
+
+        function getReferenceDateValue() {
+            const period = document.getElementById("period-filter").value;
+            const rawValue = document.getElementById("date-filter").value;
+            if (!rawValue) return "";
+
+            if (period === "daily") {
+                return rawValue;
+            }
+
+            if (period === "weekly") {
+                return formatDateInput(getDateFromWeekValue(rawValue));
+            }
+
+            const [yearText, monthText] = rawValue.split("-");
+            const year = Number(yearText);
+            const month = Number(monthText);
+
+            if (period === "monthly") {
+                return `${yearText}-${monthText}-01`;
+            }
+
+            const quarterStartMonth = Math.floor((month - 1) / 3) * 3 + 1;
+            return `${year}-${String(quarterStartMonth).padStart(2, "0")}-01`;
+        }
+
+        function renderTable(series) {
+            const table = document.getElementById("report-table");
+            if (!series.length) {
+                table.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay datos para ese filtro.</td></tr>';
+                return;
+            }
+
+            table.innerHTML = series.map((item) => `
+                <tr>
+                    <td>${item.label}</td>
+                    <td>${item.sales_count}</td>
+                    <td>${formatCurrency(item.income_total)}</td>
+                    <td>${formatCurrency(item.expense_total)}</td>
+                    <td>${formatCurrency(item.net_total)}</td>
+                </tr>
+            `).join("");
+        }
+
+        function renderCharts(series, reportType) {
+            const labels = series.map((item) => item.label);
+            const incomeData = series.map((item) => item.income_total);
+            const expenseData = series.map((item) => item.expense_total);
+            const netData = series.map((item) => item.net_total);
+
+            if (summaryChart) summaryChart.destroy();
+            if (compositionChart) compositionChart.destroy();
+
+            const datasets = [];
+            if (reportType === "sales") {
+                datasets.push({ label: "Ingresos", data: incomeData, backgroundColor: "#198754" });
+            } else if (reportType === "expenses") {
+                datasets.push({ label: "Gastos", data: expenseData, backgroundColor: "#dc3545" });
+            } else {
+                datasets.push({ label: "Ingresos", data: incomeData, backgroundColor: "#198754" });
+                datasets.push({ label: "Gastos", data: expenseData, backgroundColor: "#dc3545" });
+                datasets.push({ label: "Balance", data: netData, backgroundColor: "#0d6efd" });
+            }
+
+            summaryChart = new Chart(document.getElementById("summary-chart"), {
+                type: "bar",
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true } },
+                },
+            });
+
+            const totals = {
+                sales: incomeData.reduce((acc, value) => acc + value, 0),
+                expenses: expenseData.reduce((acc, value) => acc + value, 0),
+                net: netData.reduce((acc, value) => acc + value, 0),
+            };
+
+            compositionChart = new Chart(document.getElementById("composition-chart"), {
+                type: "doughnut",
+                data: {
+                    labels: ["Ingresos", "Gastos", "Balance"],
+                    datasets: [{
+                        data: [totals.sales, totals.expenses, Math.max(totals.net, 0)],
+                        backgroundColor: ["#198754", "#dc3545", "#0d6efd"],
+                    }],
+                },
+                options: { responsive: true },
+            });
+        }
+
+        async function loadReports() {
+            clearError();
+            try {
+                const period = document.getElementById("period-filter").value;
+                const reportType = document.getElementById("type-filter").value;
+                const limit = document.getElementById("limit-filter").value;
+                const referenceDate = getReferenceDateValue();
+                const response = await apiFetch(`/reports/summary?period=${period}&report_type=${reportType}&limit=${limit}&reference_date=${referenceDate}`);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || "No fue posible cargar los reportes.");
+                }
+
+                const data = await response.json();
+                document.getElementById("selected-period-label").textContent = data.selected_label;
+                renderCards(data.totals);
+                renderTable(data.series);
+                renderCharts(data.series, data.report_type);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        setTodayDate();
+        updatePeriodInput();
+        loadReports();
+    </script>
+</body>
+</html>

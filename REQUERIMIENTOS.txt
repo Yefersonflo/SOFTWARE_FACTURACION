@@ -1,0 +1,101 @@
+Quiero que actúes como un ingeniero de software senior especializado en desarrollo de sistemas empresariales.
+
+Necesito que me generes un sistema completo de facturación e inventario para un supermercado (canasta familiar), con arquitectura profesional, usando buenas prácticas y separación de responsabilidades.
+
+REQUISITOS GENERALES:
+- Backend en Python (preferiblemente con FastAPI)
+- Base de datos relacional (PostgreSQL o MySQL)
+- Frontend web (puede ser con HTML, CSS, JS o un framework como React si lo consideras necesario)
+- Arquitectura cliente-servidor
+- Código limpio, modular y bien documentado
+
+FUNCIONALIDADES PRINCIPALES:
+
+1. AUTENTICACIÓN Y ROLES:
+- Sistema de login seguro
+- Rol ADMINISTRADOR:
+  - Acceso total al sistema
+  - Ver reportes
+  - Gestionar inventario
+  - Gestionar usuarios
+- Rol CAJERO:
+  - Solo puede facturar ventas
+  - No puede ver reportes ni modificar inventario
+
+2. INVENTARIO:
+- CRUD de productos
+- Campos:
+  - nombre
+  - código de barras
+  - precio de compra
+  - precio de venta
+  - cantidad en stock
+  - categoría
+- Alerta automática cuando el stock sea bajo (definir umbral configurable)
+- Visualización clara del inventario
+
+3. FACTURACIÓN:
+- Crear ventas
+- Seleccionar múltiples productos
+- Calcular totales automáticamente
+- Generar factura (puede ser PDF o formato imprimible)
+- Registrar fecha y usuario que realizó la venta
+
+4. GASTOS:
+- Registro de gastos:
+  - proveedores
+  - empleados
+  - servicios (agua, luz, internet)
+- Campos:
+  - tipo de gasto
+  - monto
+  - fecha
+  - descripción
+
+5. REPORTES:
+- Reportes diarios, semanales y mensuales de:
+  - ventas
+  - gastos
+  - utilidad
+- Exportación a Excel (.xlsx)
+- Reporte de inventario actual
+
+6. DASHBOARD ADMIN:
+- Panel con métricas:
+  - ventas del día
+  - productos más vendidos
+  - ingresos vs gastos
+- Gráficas (puedes usar librerías como Chart.js o similares)
+
+7. CALENDARIO:
+- Sistema de notas o eventos diarios
+- CRUD de eventos
+
+8. BASE DE DATOS:
+- Diseñar el modelo entidad-relación
+- Crear scripts SQL de tablas
+- Relaciones correctas (usuarios, ventas, productos, etc.)
+- Incluir migraciones si es posible
+
+9. API:
+- Crear endpoints REST bien estructurados
+- Usar validación de datos
+- Manejo de errores
+
+10. SEGURIDAD:
+- Autenticación con JWT
+- Protección de rutas por roles
+
+ENTREGABLES:
+- Estructura completa del proyecto
+- Código backend
+- Código frontend
+- Scripts SQL
+- Instrucciones paso a paso para instalar y ejecutar el sistema en local
+- Ejemplos de uso (cómo crear productos, usuarios, ventas, etc.)
+
+EXTRA:
+- Si es posible, sugiere cómo desplegar el sistema en producción
+
+IMPORTANTE:
+Quiero que el sistema sea funcional, no solo un ejemplo básico. Si es necesario, divide la respuesta en partes y empieza por la arquitectura y backend.

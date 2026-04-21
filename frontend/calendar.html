@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calendario - Sistema de Facturación</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="auth.js"></script>
+    <style>
+        .calendar-shell { max-width: 1200px; }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+        .weekday,
+        .day-cell {
+            border-radius: 14px;
+        }
+        .weekday {
+            background: var(--app-sidebar);
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .day-cell {
+            min-height: 135px;
+            background: var(--app-surface);
+            border: 1px solid var(--app-border);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .day-cell.muted {
+            background: var(--app-surface-alt);
+            color: var(--app-muted);
+        }
+        .day-cell.today {
+            border: 2px solid #0d6efd;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.08);
+        }
+        .day-number {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .event-pill {
+            background: #dbeafe;
+            color: #0b5394;
+            border-radius: 10px;
+            padding: 6px 8px;
+            font-size: 0.8rem;
+            line-height: 1.2;
+        }
+        .event-pill small {
+            display: block;
+            color: #355070;
+        }
+        @media (max-width: 768px) {
+            .calendar-grid { gap: 6px; }
+            .day-cell { min-height: 110px; padding: 8px; }
+            .weekday { font-size: 0.85rem; padding: 10px 6px; }
+            .event-pill { font-size: 0.72rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="calendar-shell">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+            <div>
+                <h4 class="mb-1">Calendario de Notas</h4>
+                <p class="text-muted mb-0">Vista tipo almanaque para organizar recordatorios y eventos.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-dark" onclick="changeMonth(-1)">Mes anterior</button>
+                <h4 id="month-title" class="mb-0 text-center" style="min-width: 220px;"></h4>
+                <button class="btn btn-outline-dark" onclick="changeMonth(1)">Mes siguiente</button>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card border-0">
+                    <div class="card-body">
+                        <h5 class="mb-3">Agregar Nota</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Título</label>
+                            <input type="text" id="ev-title" class="form-control" placeholder="Pago de proveedor">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fecha</label>
+                            <input type="date" id="ev-date" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea id="ev-desc" class="form-control" rows="4" placeholder="Detalle del recordatorio"></textarea>
+                        </div>
+                        <button onclick="saveEvent()" class="btn btn-primary w-100">Guardar Nota</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="card border-0">
+                    <div class="card-body">
+                        <div class="calendar-grid mb-2">
+                            <div class="weekday">Lun</div>
+                            <div class="weekday">Mar</div>
+                            <div class="weekday">Mié</div>
+                            <div class="weekday">Jue</div>
+                            <div class="weekday">Vie</div>
+                            <div class="weekday">Sáb</div>
+                            <div class="weekday">Dom</div>
+                        </div>
+                        <div id="calendar-grid" class="calendar-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        initAppShell({
+            activePage: "calendar.html",
+            title: "Calendario",
+            subtitle: "Almanaque mensual con notas y recordatorios.",
+            requiredRole: "admin",
+        });
+
+        const monthNames = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ];
+        const today = new Date();
+        let currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        let events = [];
+
+        function formatDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function normalizeEventDate(value) {
+            return new Date(`${value.split("T")[0]}T00:00:00`);
+        }
+
+        function getEventsForDate(date) {
+            const key = formatDateKey(date);
+            return events.filter((event) => event.date.split("T")[0] === key);
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById("calendar-grid");
+            const monthTitle = document.getElementById("month-title");
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const firstWeekDay = (firstDay.getDay() + 6) % 7;
+            const daysInMonth = lastDay.getDate();
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+            const totalCells = Math.ceil((firstWeekDay + daysInMonth) / 7) * 7;
+
+            monthTitle.textContent = `${monthNames[month]} ${year}`;
+            grid.innerHTML = "";
+
+            for (let index = 0; index < totalCells; index++) {
+                let cellDate;
+                let muted = false;
+
+                if (index < firstWeekDay) {
+                    cellDate = new Date(year, month - 1, prevMonthLastDay - firstWeekDay + index + 1);
+                    muted = true;
+                } else if (index >= firstWeekDay + daysInMonth) {
+                    cellDate = new Date(year, month + 1, index - (firstWeekDay + daysInMonth) + 1);
+                    muted = true;
+                } else {
+                    cellDate = new Date(year, month, index - firstWeekDay + 1);
+                }
+
+                const dayEvents = getEventsForDate(cellDate);
+                const isToday = formatDateKey(cellDate) === formatDateKey(today);
+                const cell = document.createElement("div");
+                cell.className = `day-cell${muted ? " muted" : ""}${isToday ? " today" : ""}`;
+
+                cell.innerHTML = `
+                    <div class="day-number">${cellDate.getDate()}</div>
+                    ${dayEvents.map((event) => `
+                        <div class="event-pill">
+                            ${event.title}
+                            <small>${event.description || "Sin descripción"}</small>
+                        </div>
+                    `).join("")}
+                `;
+
+                grid.appendChild(cell);
+            }
+        }
+
+        function changeMonth(step) {
+            currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + step, 1);
+            renderCalendar();
+        }
+
+        async function saveEvent() {
+            const title = document.getElementById("ev-title").value.trim();
+            const date = document.getElementById("ev-date").value;
+            const description = document.getElementById("ev-desc").value.trim();
+
+            if (!title || !date) {
+                alert("Debes ingresar título y fecha.");
+                return;
+            }
+
+            const payload = { title, date: `${date}T00:00:00`, description };
+            const response = await apiFetch("/events", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                alert(errorData.detail || "No fue posible guardar la nota.");
+                return;
+            }
+
+            document.getElementById("ev-title").value = "";
+            document.getElementById("ev-date").value = "";
+            document.getElementById("ev-desc").value = "";
+            await loadEvents();
+        }
+
+        async function loadEvents() {
+            const response = await apiFetch("/events");
+            events = await response.json();
+            events.sort((a, b) => normalizeEventDate(a.date) - normalizeEventDate(b.date));
+            renderCalendar();
+        }
+
+        loadEvents();
+    </script>
+</body>
+</html>

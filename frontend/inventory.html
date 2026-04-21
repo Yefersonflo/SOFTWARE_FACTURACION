@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registrar Producto - Sistema de Facturación</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="auth.js"></script>
+</head>
+<body>
+    <div class="row justify-content-center">
+        <div class="col-xl-8">
+            <div class="card border-0">
+                <div class="card-body p-4">
+                    <h3 class="mb-4">Nuevo Producto</h3>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" id="p-name" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Código</label>
+                            <input type="text" id="p-barcode" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">P. Compra</label>
+                            <input type="number" id="p-purchase" class="form-control" step="0.01">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">P. Venta</label>
+                            <input type="number" id="p-sale" class="form-control" step="0.01">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Stock</label>
+                            <input type="number" id="p-stock" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Stock mínimo</label>
+                            <input type="number" id="p-min-stock" class="form-control" value="5">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button onclick="saveProduct()" class="btn btn-primary w-100">Crear Producto</button>
+                        <button onclick="resetProductForm()" class="btn btn-outline-secondary">Limpiar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        initAppShell({
+            activePage: "inventory.html",
+            title: "Registrar Producto",
+            subtitle: "Alta completa de productos en el inventario.",
+            requiredRole: "admin",
+        });
+
+        function resetProductForm() {
+            document.getElementById("p-name").value = "";
+            document.getElementById("p-barcode").value = "";
+            document.getElementById("p-purchase").value = "";
+            document.getElementById("p-sale").value = "";
+            document.getElementById("p-stock").value = "";
+            document.getElementById("p-min-stock").value = "5";
+        }
+
+        async function saveProduct() {
+            const payload = {
+                name: document.getElementById("p-name").value.trim(),
+                barcode: document.getElementById("p-barcode").value.trim(),
+                purchase_price: parseFloat(document.getElementById("p-purchase").value),
+                sale_price: parseFloat(document.getElementById("p-sale").value),
+                stock: parseInt(document.getElementById("p-stock").value, 10),
+                min_stock: parseInt(document.getElementById("p-min-stock").value, 10),
+            };
+
+            if (!payload.name || !payload.barcode) {
+                alert("Debes completar nombre y código.");
+                return;
+            }
+
+            if (
+                Number.isNaN(payload.purchase_price) ||
+                Number.isNaN(payload.sale_price) ||
+                Number.isNaN(payload.stock) ||
+                Number.isNaN(payload.min_stock)
+            ) {
+                alert("Debes completar precios y stock con valores válidos.");
+                return;
+            }
+
+            const response = await apiFetch("/products", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                alert(errorData.detail || "No fue posible crear el producto.");
+                return;
+            }
+
+            alert("Producto registrado correctamente");
+            resetProductForm();
+        }
+    </script>
+</body>
+</html>
